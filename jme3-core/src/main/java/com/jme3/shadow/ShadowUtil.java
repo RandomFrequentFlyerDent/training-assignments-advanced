@@ -33,11 +33,7 @@ package com.jme3.shadow;
 
 import com.jme3.bounding.BoundingBox;
 import com.jme3.bounding.BoundingVolume;
-import com.jme3.math.FastMath;
-import com.jme3.math.Matrix4f;
-import com.jme3.math.Transform;
-import com.jme3.math.Vector2f;
-import com.jme3.math.Vector3f;
+import com.jme3.math.*;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.renderer.queue.GeometryList;
@@ -317,10 +313,10 @@ public class ShadowUtil {
         offsetZ = -splitMin.z * scaleZ;
 
         Matrix4f cropMatrix = vars.tempMat4;
-        cropMatrix.set(scaleX, 0f, 0f, offsetX,
-                0f, scaleY, 0f, offsetY,
-                0f, 0f, scaleZ, offsetZ,
-                0f, 0f, 0f, 1f);
+        cropMatrix.set(new Vector4f(scaleX, 0f, 0f, offsetX),
+                new Vector4f(0f, scaleY, 0f, offsetY),
+                new Vector4f(0f, 0f, scaleZ, offsetZ),
+                new Vector4f(0f, 0f, 0f, 1f));
 
 
         Matrix4f result = new Matrix4f();
@@ -577,10 +573,10 @@ public class ShadowUtil {
 
 
         Matrix4f cropMatrix = vars.tempMat4;
-        cropMatrix.set(scaleX, 0f, 0f, offsetX,
-                0f, scaleY, 0f, offsetY,
-                0f, 0f, scaleZ, offsetZ,
-                0f, 0f, 0f, 1f);
+        cropMatrix.set(new Vector4f(scaleX, 0f, 0f, offsetX),
+                new Vector4f(0f, scaleY, 0f, offsetY),
+                new Vector4f(0f, 0f, scaleZ, offsetZ),
+                new Vector4f(0f, 0f, 0f, 1f));
 
 
         Matrix4f result = new Matrix4f();
@@ -718,7 +714,7 @@ public class ShadowUtil {
      * of OccludersExtractor.rootScene node that are both in the frustum of the given vpCamera and some camera inside cameras array.
      * The array of cameras must be initialized to represent the light viewspace of some light like pointLight or spotLight
      *
-     * @param camera the viewPort camera 
+     * @param vpCamera the viewPort camera
      * @param cameras the camera array to check geometries against, representing the light viewspace
      * @param outputGeometryList the output list of all geometries that are in the camera frustum
      */
