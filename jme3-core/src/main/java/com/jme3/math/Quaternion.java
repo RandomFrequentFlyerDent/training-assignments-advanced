@@ -325,35 +325,17 @@ public final class Quaternion implements Savable, Cloneable, java.io.Serializabl
      *            the matrix that defines the rotation.
      */
     public Quaternion fromRotationMatrix(Matrix3f matrix) {
-        return fromRotationMatrix(matrix.m00, matrix.m01, matrix.m02, matrix.m10,
-                matrix.m11, matrix.m12, matrix.m20, matrix.m21, matrix.m22);
+        return fromRotationMatrix(new Vector3f(matrix.m00, matrix.m01, matrix.m02),
+                new Vector3f(matrix.m10, matrix.m11, matrix.m12),
+                new Vector3f(matrix.m20, matrix.m21, matrix.m22));
     }
 
-    public Quaternion fromRotationMatrix(float m00, float m01, float m02,
-            float m10, float m11, float m12, float m20, float m21, float m22) {
+    public Quaternion fromRotationMatrix(Vector3f forwardVector, Vector3f upVector, Vector3f sideVector) {
         // first normalize the forward (F), up (U) and side (S) vectors of the rotation matrix
         // so that the scale does not affect the rotation
-        float lengthSquared = m00 * m00 + m10 * m10 + m20 * m20;
-        if (lengthSquared != 1f && lengthSquared != 0f) {
-            lengthSquared = 1.0f / FastMath.sqrt(lengthSquared);
-            m00 *= lengthSquared;
-            m10 *= lengthSquared;
-            m20 *= lengthSquared;
-        }
-        lengthSquared = m01 * m01 + m11 * m11 + m21 * m21;
-        if (lengthSquared != 1f && lengthSquared != 0f) {
-            lengthSquared = 1.0f / FastMath.sqrt(lengthSquared);
-            m01 *= lengthSquared;
-            m11 *= lengthSquared;
-            m21 *= lengthSquared;
-        }
-        lengthSquared = m02 * m02 + m12 * m12 + m22 * m22;
-        if (lengthSquared != 1f && lengthSquared != 0f) {
-            lengthSquared = 1.0f / FastMath.sqrt(lengthSquared);
-            m02 *= lengthSquared;
-            m12 *= lengthSquared;
-            m22 *= lengthSquared;
-        }
+        forwardVector.normalize();
+        upVector.normalize();
+        sideVector.normalize();
 
         // Use the Graphics Gems code, from 
         // ftp://ftp.cis.upenn.edu/pub/graphics/shoemake/quatut.ps.Z
@@ -361,40 +343,59 @@ public final class Quaternion implements Savable, Cloneable, java.io.Serializabl
 
         // the trace is the sum of the diagonal elements; see
         // http://mathworld.wolfram.com/MatrixTrace.html
-        float t = m00 + m11 + m22;
-
-        // we protect the division by s by ensuring that s>=1
-        if (t >= 0) { // |w| >= .5
-            float s = FastMath.sqrt(t + 1); // |s|>=1 ...
-            w = 0.5f * s;
-            s = 0.5f / s;                 // so this division isn't bad
-            x = (m21 - m12) * s;
-            y = (m02 - m20) * s;
-            z = (m10 - m01) * s;
-        } else if ((m00 > m11) && (m00 > m22)) {
-            float s = FastMath.sqrt(1.0f + m00 - m11 - m22); // |s|>=1
-            x = s * 0.5f; // |x| >= .5
-            s = 0.5f / s;
-            y = (m10 + m01) * s;
-            z = (m02 + m20) * s;
-            w = (m21 - m12) * s;
-        } else if (m11 > m22) {
-            float s = FastMath.sqrt(1.0f + m11 - m00 - m22); // |s|>=1
-            y = s * 0.5f; // |y| >= .5
-            s = 0.5f / s;
-            x = (m10 + m01) * s;
-            z = (m21 + m12) * s;
-            w = (m02 - m20) * s;
-        } else {
-            float s = FastMath.sqrt(1.0f + m22 - m00 - m11); // |s|>=1
-            z = s * 0.5f; // |z| >= .5
-            s = 0.5f / s;
-            x = (m02 + m20) * s;
-            y = (m21 + m12) * s;
-            w = (m10 - m01) * s;
-        }
+        float t = forwardVector.x + upVector.y + sideVector.z;
+        adjustThisQuarternation(t, forwardVector, upVector, sideVector);
 
         return this;
+    }
+
+    private void adjustThisQuarternation(float t, Vector3f forwardVector, Vector3f upVector, Vector3f sideVector) {
+        // we protect the division by s by ensuring that s>=1
+        if (t >= 0) { // |w| >= .5
+            adjustOnWValue(t, forwardVector, upVector, sideVector);
+        } else if ((forwardVector.x > upVector.y) && (forwardVector.x > sideVector.z)) {
+            adjustOnXValue(forwardVector, upVector, sideVector);
+        } else if (upVector.y > sideVector.z) {
+            adjustOnYValue(forwardVector, upVector, sideVector);
+        } else {
+            adjustOnZValue(forwardVector, upVector, sideVector);
+        }
+    }
+
+    private void adjustOnZValue(Vector3f forwardVector, Vector3f upVector, Vector3f sideVector) {
+        float s = FastMath.sqrt(1.0f + sideVector.z - forwardVector.x - upVector.y); // |s|>=1
+        z = s * 0.5f; // |z| >= .5
+        s = 0.5f / s;
+        x = (sideVector.x + forwardVector.z) * s;
+        y = (upVector.z + sideVector.y) * s;
+        w = (forwardVector.y - upVector.x) * s;
+    }
+
+    private void adjustOnYValue(Vector3f forwardVector, Vector3f upVector, Vector3f sideVector) {
+        float s = FastMath.sqrt(1.0f + upVector.y - forwardVector.x - sideVector.z); // |s|>=1
+        y = s * 0.5f; // |y| >= .5
+        s = 0.5f / s;
+        x = (forwardVector.y + upVector.x) * s;
+        z = (upVector.z + sideVector.y) * s;
+        w = (sideVector.x - forwardVector.z) * s;
+    }
+
+    private void adjustOnXValue(Vector3f forwardVector, Vector3f upVector, Vector3f sideVector) {
+        float s = FastMath.sqrt(1.0f + forwardVector.x - upVector.y - sideVector.z); // |s|>=1
+        x = s * 0.5f; // |x| >= .5
+        s = 0.5f / s;
+        y = (forwardVector.y + upVector.x) * s;
+        z = (sideVector.x + forwardVector.z) * s;
+        w = (upVector.z - sideVector.y) * s;
+    }
+
+    private void adjustOnWValue(float t, Vector3f forwardVector, Vector3f upVector, Vector3f sideVector) {
+        float s = FastMath.sqrt(t + 1); // |s|>=1 ...
+        w = 0.5f * s;
+        s = 0.5f / s;                 // so this division isn't bad
+        x = (upVector.z - sideVector.y) * s;
+        y = (sideVector.x - forwardVector.z) * s;
+        z = (forwardVector.y - upVector.x) * s;
     }
 
     /**
@@ -929,8 +930,9 @@ public final class Quaternion implements Savable, Cloneable, java.io.Serializabl
      * @param zAxis vector representing the z-axis of the coordinate system.
      */
     public Quaternion fromAxes(Vector3f xAxis, Vector3f yAxis, Vector3f zAxis) {
-        return fromRotationMatrix(xAxis.x, yAxis.x, zAxis.x, xAxis.y, yAxis.y,
-                zAxis.y, xAxis.z, yAxis.z, zAxis.z);
+        return fromRotationMatrix(new Vector3f(xAxis.x, yAxis.x, zAxis.x),
+                new Vector3f(xAxis.y, yAxis.y, zAxis.y),
+                new Vector3f(xAxis.z, yAxis.z, zAxis.z));
     }
 
     /**
