@@ -892,8 +892,5 @@ public final class Bone implements Savable, JmeCloneable {
      * @see #setUserControl(boolean)
      * @return
      */
-    public boolean hasUserControl(){
-
-        return userControl;
-    }
+    public boolean hasUserControl(){ return userControl; }
 }
