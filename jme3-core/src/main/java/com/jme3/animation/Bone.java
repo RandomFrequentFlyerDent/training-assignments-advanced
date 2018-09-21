@@ -893,6 +893,7 @@ public final class Bone implements Savable, JmeCloneable {
      * @return
      */
     public boolean hasUserControl(){
+
         return userControl;
     }
 }
